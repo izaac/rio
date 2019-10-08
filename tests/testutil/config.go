@@ -14,6 +14,7 @@ import (
 
 type TestConfig struct {
 	Name      string
+	FullName  string
 	Filepath  string
 	ConfigMap corev1.ConfigMap
 	T         *testing.T
@@ -23,14 +24,14 @@ type TestConfig struct {
 // This does not take a name or namespace param, that is setup by default
 func (tc *TestConfig) Create(t *testing.T, content []string) {
 	tc.T = t
-	name := GenerateName()
-	tc.Name = fmt.Sprintf("%s/%s", testingNamespace, name)
-	err := tc.createTempFile(name, content)
+	tc.Name = GenerateName()
+	tc.FullName = fmt.Sprintf("%s/%s", testingNamespace, tc.Name)
+	err := tc.createTempFile(tc.Name, content)
 	defer os.Remove(tc.Filepath)
 	if err != nil {
 		tc.T.Fatal(err.Error())
 	}
-	args := []string{"create", tc.Name, tc.Filepath}
+	args := []string{"create", tc.FullName, tc.Filepath}
 	_, err = RioCmd("config", args)
 	if err != nil {
 		tc.T.Fatalf("config create command failed: %v", err.Error())
@@ -44,7 +45,7 @@ func (tc *TestConfig) Create(t *testing.T, content []string) {
 // Executes "rio rm" for this config
 func (tc *TestConfig) Remove() {
 	if tc.ConfigMap.Name != "" {
-		_, err := RioCmd("rm", []string{"--type", "config", tc.Name})
+		_, err := RioCmd("rm", []string{"--type", "config", tc.FullName})
 		if err != nil {
 			tc.T.Logf("failed to delete config: %v", err.Error())
 		}
@@ -88,7 +89,7 @@ func (tc *TestConfig) createTempFile(filename string, content []string) error {
 }
 
 func (tc *TestConfig) reload() error {
-	args := append([]string{"--type", "config", "--format", "json", tc.Name})
+	args := append([]string{"--type", "config", "--format", "json", tc.FullName})
 	out, err := RioCmd("inspect", args)
 	if err != nil {
 		return err
